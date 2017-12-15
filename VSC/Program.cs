@@ -10,9 +10,39 @@ namespace VSC
     {
         static void Main(string[] args)
         {
-            Directory st1 = new Directory();
-            st1.main_func();
-            
+            Command cmd = new Command();
+            do
+            {
+                Console.WriteLine("Введите команду:");
+                string comand = Console.ReadLine();
+                string[] array = new string[2];
+                array = comand.Split(new[] { ' ' }, 2);
+                array[0] = array[0].ToLower();
+                if (array.Length == 2)
+                {
+                    switch (array[0])
+                    {
+                        case "init": cmd.Init(array[1]); break;
+                        case "add": cmd.AddFile(array[1]); break;
+                        case "remove": cmd.RemoveFile(array[1]); break;
+                        case "checkout": cmd.Checkout(array[1]); break;
+                        default: break;
+                    }
+                }
+                else if (array.Length == 1)
+                {
+                    switch (array[0])
+                    {
+                        case "status": cmd.Status(); break;
+                        case "listbranch": cmd.Listbranch(); break;
+                        case "apply": cmd.Apply(); break;
+                        default: break;
+                    }
+                }
+                else Console.WriteLine("Введена неверная команда");
+
+            } while (true);
+
         }
     }
 }
