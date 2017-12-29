@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Xml.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace VSC
 {
@@ -11,7 +13,56 @@ namespace VSC
     {
         public static List<MyFolder> FolderList = new List<MyFolder>();
         public static MyFolder ActiveDir = new MyFolder();
+        
+        List<string> temp = new List<string>();
+        public void FileOpen(string way)
+        {
+            string line = "";
+            using (StreamReader sr = new StreamReader("1.txt"))
+            {
+                while ((line = sr.ReadLine()) != null)
+                {
+                        ActiveDir = new MyFolder() { Path = line };
+                        FolderList.Add(ActiveDir);   
+                }
+                sr.Close();
+            }
+            var binFormat = new BinaryFormatter();
+            using (var fs = new FileStream(way, FileMode.Open))
+            {
+                while (fs.Length != fs.Position)
+                {
+                    foreach (MyFolder folder in FolderList)
+                    {
+                    
+                        ActiveDir = folder;
+                        ActiveDir.filelist = ((List<MyFile>)binFormat.Deserialize(fs));
 
+                        //Console.WriteLine("Имя: {0} \t Возраст: {1}", dsUser.Name, dsUser.Age);
+                    }
+                }
+            }
+            /*XmlSerializer ser = new XmlSerializer(typeof(List<MyFile>));
+            FileStream file = new FileStream(way, FileMode.Open, FileAccess.Read, FileShare.None);
+
+            while (file.Length != file.Position)
+            {
+
+                //ser.Serialize(file, ActiveDir.filelist);
+
+                ActiveDir.filelist = (List<MyFile>)ser.Deserialize(file);
+                //file.Close();
+            }*/
+            
+           
+            /*formatter.Serialize(fs, people);
+            }
+ 
+            using (FileStream fs = new FileStream("people.xml", FileMode.OpenOrCreate))
+            {
+                Person[] newpeople = (Person[])formatter.Deserialize(fs);*/
+
+        }
         public void Init(string dir_path)
         {
             if (Directory.Exists(dir_path))
@@ -76,15 +127,21 @@ namespace VSC
             List<MyFile> NewFileNames = new List<MyFile>(); //новое состояние папки
 
             DirectoryInfo di = new DirectoryInfo(ActiveDir.Path);
-            foreach (FileInfo file in di.GetFiles())
+            if (di.Exists)
             {
-                NewFileNames.Add(new MyFile() {
-                    Name = file.Name,
-                    Size = file.Length,
-                    Create = file.CreationTime,
-                    Modified = file.LastWriteTime,
-                });
+                foreach (FileInfo file in di.GetFiles())
+                {
+                    NewFileNames.Add(new MyFile()
+                    {
+                        Name = file.Name,
+                        Size = file.Length,
+                        Create = file.CreationTime,
+                        Modified = file.LastWriteTime,
+                    });
+                }
             }
+            else
+                Console.WriteLine("Такой папки не существут");
 
             foreach (MyFile file in ActiveDir.filelist)
             {
@@ -116,8 +173,9 @@ namespace VSC
                 {
                     FileInfo newfile = new FileInfo(ActiveDir.Path + @"\" + NewFileNames[inew].Name);
                     Console.ForegroundColor = ConsoleColor.Green;
+                    
                     Console.WriteLine("file: " + newfile.Name + " <-- new");
-                    Console.WriteLine("size: " + newfile.Length);
+                    Console.WriteLine("size: " + BytesToString(newfile.Length));
                     Console.WriteLine("created: " + newfile.CreationTime);
                     Console.WriteLine("modified: " + newfile.LastWriteTime);
                     Console.WriteLine();
@@ -131,26 +189,39 @@ namespace VSC
                 }
                 else if ((iold != -1 && inew != -1))
                 {
+                    string m = "";
+                    string size = "";
+                    string c = "";
+
                     if (OldFileNames[iold].Label == "<-- removed") //если файл уже убрали из версионного контроля нет смысла проверять дальше
                     {
                         Print(file.Name, "<-- removed", true);
                         continue;
                     }
-                    else if (NewFileNames[inew].Size != OldFileNames[iold].Size) //изменился ли размер файла
+                    else
                     {
-                        Print(file.Name, "", true, "<-- " + NewFileNames[inew].Size);
-                    }
-                    else if (NewFileNames[inew].Modified != OldFileNames[iold].Modified) // или просто файл меняли, но размер не менялся
-                    {
-                        Print(file.Name, "", true, "", "<-- " + NewFileNames[inew].Modified);
+                        if (NewFileNames[inew].Size != OldFileNames[iold].Size) //изменился ли размер файла
+                        {
+                            size = "<-- " + BytesToString(NewFileNames[inew].Size);
+                            //Print(file.Name, "", true,  + size);
+                        }
+                        if (NewFileNames[inew].Modified != OldFileNames[iold].Modified) // или просто файл меняли, но размер не менялся
+                        {
+                            m = "<-- " + NewFileNames[inew].Modified;
 
+                        }
+                        if (NewFileNames[inew].Create != OldFileNames[iold].Create) //или удалили и потом обратно создали??
+                        {
+                            c = "<-- " + NewFileNames[inew].Create;
+                        }
+                        if (size != "" || m != "" || c != "")
+                            Print(file.Name, "", true, size, m, c);
+
+
+                        else Print(file.Name, OldFileNames[iold].Label);
                     }
-                    else if (NewFileNames[inew].Create != OldFileNames[iold].Create) //или удалили и потом обратно создали??
-                    {
-                        Print(file.Name, "", true, "", "", "<-- " + NewFileNames[inew].Create);
-                    }
-                    else Print(file.Name, OldFileNames[iold].Label);
-                }                
+                }
+               
             }
         }
 
@@ -224,7 +295,30 @@ namespace VSC
 
         public void Apply()
         {
+            List<string> list = new List<string>();
+            foreach (MyFile file in ActiveDir.filelist)
+            {
+                if (file.Label == "<-- removed")
+                {
+                    list.Add(file.Name);
+                }
+            }
 
+            ActiveDir.filelist.Clear();
+            ActiveDir.InitList(list.ToArray());
+            Console.WriteLine("Все изменения сохранены");
+            /*int i = 0;
+            foreach (MyFile file in ActiveDir.filelist)
+            {
+                i++;
+                foreach(string s in list)
+                {
+                    if (file.Name==s)
+                    {   
+                        ActiveDir.filelist.RemoveAt(i);
+                    }
+                }
+            }*/
         }
         public void Listbranch()
         {
@@ -254,7 +348,7 @@ namespace VSC
                 if (i < FolderList.Count && i >= 0)
                 {
                     ActiveDir = FolderList[i - 1];
-                    Console.WriteLine("Activedirectory: ", ActiveDir.Path);
+                    Console.WriteLine("Activedirectory: {0}", ActiveDir.Path);
                     return;
                 }
             }
@@ -274,6 +368,41 @@ namespace VSC
                 Console.WriteLine("Директория с таким именем не отслеживается");
             }
             else Console.WriteLine("Директория не найдена");
+        }
+        public void CloseProgram(string way)
+        {
+            /*if (!File.Exists("1.txt"))
+            {
+                StreamWriter sw = File.CreateText("1.txt");          
+            }*/
+            using (StreamWriter sw = new StreamWriter("1.txt"))
+            {
+                foreach (MyFolder folder in FolderList)
+                {
+                    sw.WriteLine(folder.Path);
+                }
+                sw.Close();
+            }
+            var binFormat = new BinaryFormatter();
+            using (var fs = new FileStream(way, FileMode.Create))
+            {
+                foreach (MyFolder folder in FolderList)
+                {
+                    ActiveDir = folder;
+                    binFormat.Serialize(fs, ActiveDir.filelist);
+                }
+            }
+            /*FileStream file = new FileStream(way, FileMode.Create, FileAccess.Write, FileShare.None);
+            XmlSerializer ser = new XmlSerializer(typeof(List<MyFile>));
+
+            foreach (MyFolder folder in FolderList)
+                {
+                    ActiveDir = folder;   
+                    ser.Serialize(file, ActiveDir.filelist);
+                }
+
+            file.Close();*/
+            Environment.Exit(0);
         }
     }
 }

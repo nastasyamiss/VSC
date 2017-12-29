@@ -11,6 +11,8 @@ namespace VSC
         static void Main(string[] args)
         {
             Command cmd = new Command();
+            const string filepath = "start.dat";
+            cmd.FileOpen(filepath);
             do
             {
                 Console.WriteLine("Введите команду:");
@@ -36,6 +38,7 @@ namespace VSC
                         case "status": cmd.Status(); break;
                         case "listbranch": cmd.Listbranch(); break;
                         case "apply": cmd.Apply(); break;
+                        case "exit": cmd.CloseProgram(filepath); break;
                         default: break;
                     }
                 }

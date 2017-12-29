@@ -7,7 +7,8 @@ using System.IO;
 
 namespace VSC
 {
-    class MyFile
+    [Serializable]
+    public class MyFile
     {
         public string Name { get; set; }
         public long Size { get; set; }

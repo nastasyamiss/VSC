@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
+using System.Xml.Serialization;
 
 namespace VSC
 {
@@ -12,16 +13,17 @@ namespace VSC
         public List<MyFile> filelist = new List<MyFile>();
         public string Path { get; set; }
 
-        public void InitList()
+        public void InitList(params string[] removes)
         {
             DirectoryInfo DI = new DirectoryInfo(Path);
             FileInfo[] DIFiles = DI.GetFiles();
 
-
             foreach (FileInfo file in DIFiles)
             {
-                filelist.Add(new MyFile()
+                if (!removes.Contains(file.Name))
+                    filelist.Add(new MyFile()
                 {
+
                     Name = file.Name,
                     Size = file.Length,
                     Create = file.CreationTime,
